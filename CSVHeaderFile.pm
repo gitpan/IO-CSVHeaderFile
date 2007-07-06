@@ -1,5 +1,5 @@
 package IO::CSVHeaderFile;
-# $Id: CSVHeaderFile.pm,v 1.1.1.1 2004/11/20 22:21:02 vasek Exp $
+# $Id: CSVHeaderFile.pm,v 1.2 2007/07/06 08:44:46 vasek Exp $
 
 use strict;
 use Text::CSV_XS;
@@ -14,13 +14,16 @@ use Carp;
         
 );
 
-$VERSION = '0.03';
+$VERSION = '0.04';
+
+my $SUPPORTED_XS_ARGS;
 
 sub open {
 	my $self = shift;
 	my $args = {}; $args = pop @_ if ref($_[$#_]) eq 'HASH';
-	$args->{eol}|= "\n";
-	my $csv = Text::CSV_XS->new($args);
+	_init_supported_xs_args();
+	my %xs_args = ( 'eol' => "\n", map {exists $SUPPORTED_XS_ARGS->{$_} ? ($_ => $args->{$_}):()} keys %$args);
+	my $csv = Text::CSV_XS->new(\%xs_args);
 	my $mode;
 	if(@_ > 1){
 		croak 'usage: $fh->open(FILENAME [ ,< > >> ][,CSVOPT])' if $_[2] =~ /^\d+$/;
@@ -103,6 +106,15 @@ sub csv_print{
 		}
 	}
 	${*$self}{io_csvheaderfile_csv}->print($self,\@columns);
+}
+
+sub _init_supported_xs_args {
+	return if defined $SUPPORTED_XS_ARGS;
+	my $tmpcsvxs = Text::CSV_XS->new();
+	$SUPPORTED_XS_ARGS = UNIVERSAL::isa($tmpcsvxs, "HASH")?
+		{%$tmpcsvxs}: {map {$_ => undef} qw(eol sep_char allow_whitespace quote_char
+		allow_loose_quotes escape_char allow_loose_escapes binary types always_quote 
+		keep_meta_info)};
 }
 
 1;
